@@ -1,5 +1,4 @@
 import math
-import numpy as np
 import torch
 import torch.nn as nn
 from typing import Dict
@@ -33,11 +32,11 @@ class SEM_model(nn.Module):
         self.norms = ListLayerNorm(dims)
 
         # reconstruct        
-        self.recon = Reconstructor(dims, 32, 1, upsample, True, "lrelu")
+        self.recon = Reconstructor(dims, 32, 1, upsample, False, "lrelu")
 
         # transformer
-        self.junction_x = nn.Conv2d(dims[depth-1], d_model, kernel_size=1)
-        self.junction_y = nn.Conv2d(dims[depth-1], d_model, kernel_size=1)
+        self.junction_x = nn.Conv2d(dims[depth-1], d_model, kernel_size=1, bias=False)
+        self.junction_y = nn.Conv2d(dims[depth-1], d_model, kernel_size=1, bias=False)
         self.pe = PositionEmbedding2D(d_model//2, normalize=True)
         self.query = nn.Embedding(n_query**2, d_model)
         trunc_normal_(self.query.weight, std=.02)
@@ -62,20 +61,13 @@ class SEM_model(nn.Module):
             upscale = UpscaleBlock(curr_dim, curr_dim//2, upsample, True, "lrelu")
             curr_dim = curr_dim // 2
             corrector.append(upscale)
-        corrector += [UpscaleBlock(curr_dim, 1, upsample, True, "sigmoid")]
+        corrector += [UpscaleBlock(curr_dim, 1, upsample, False, "sigmoid")]
         self.corrector = nn.Sequential(*corrector)
 
         # loss func
         self.avg_loss = nn.SmoothL1Loss()
         self.map_loss = nn.L1Loss()
 
-    def init_head(
-        self, 
-        m: nn.Module
-    ) -> None:
-        trunc_normal_(m.weight, std=.02)
-        nn.init.constant_(m.bias, 0)
-        
     def forward(
         self,
         x: torch.Tensor

@@ -76,7 +76,7 @@ class UpscaleBlock(nn.Module):
 
         # norm
         if norm:
-            layers.append(nn.InstanceNorm2d(out_channels, affine=True))
+            layers.append(nn.GroupNorm(16, out_channels, eps=1e-05, affine=True))
 
         # act
         if act is None:
@@ -101,7 +101,8 @@ class UpscaleBlock(nn.Module):
     ) -> None:
         if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
             trunc_normal_(m.weight, std=.02)
-            nn.init.constant_(m.bias, 0)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
 
     def forward(
         self, 
@@ -126,8 +127,8 @@ class Reconstructor(nn.Module):
         channels = channels[::-1]
         stem = [UpscaleBlock(channels[i], channels[i+1], upsample, norm, act) for i in range(len(channels)-1)]
         head = [
-            UpscaleBlock(channels[-1], inter_dim, upsample, norm, act),
-            UpscaleBlock(inter_dim, out_dim, upsample, norm, "sigmoid")
+            UpscaleBlock(channels[-1], inter_dim, upsample, False, act),
+            UpscaleBlock(inter_dim, out_dim, upsample, False, "sigmoid")
         ]
         self.stem = nn.Sequential(*stem)
         self.head = nn.Sequential(*head)

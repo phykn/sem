@@ -26,9 +26,9 @@ class get_config:
     in_chans: int=1
     depth: int=3
     pretrained: bool=True
-    upsample: str="convtranspose"
+    upsample: str="pixelshuffle"
     n_query: int=7
-    d_model: int=256
+    d_model: int=128
     n_head: int=8
     d_ff: int=1024
     num_encoder_layers: int=3
